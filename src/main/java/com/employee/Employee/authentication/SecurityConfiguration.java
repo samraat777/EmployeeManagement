@@ -2,6 +2,7 @@ package com.employee.Employee.authentication;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -17,14 +18,32 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+/*
+@EnableMethodSecurity
+The above annotation enable method level role scanning
+In the rest method controller we can add the annotation to allow only certaim roles user to access it
+Eg: the controller method should look like this
+
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PostMapping("/new")
+    public ResponseEntity<EmployeeDTO> addEmployee(@RequestBody EmployeeDTO employeeDTO)
+    {
+        employeeService.saveEmployee(employeeDTO);
+        return new ResponseEntity<>(employeeDTO,HttpStatus.CREATED);
+    }
+ */
 public class SecurityConfiguration {
     @Bean
     public InMemoryUserDetailsManager userDetailsService() {
         UserDetails user = User.withUsername("user")
-                .password(encoder().encode("password"))
+                .password(encoder().encode("user"))
                 .roles("USER")
                 .build();
-        return new InMemoryUserDetailsManager(user);
+        UserDetails admin = User.withUsername("admin")
+                .password((encoder().encode("admin")))
+                .roles("ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(user, admin);
     }
 
     @Bean
@@ -34,12 +53,27 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeRequests(authorizeRequests -> authorizeRequests.anyRequest()
+
+        http.authorizeRequests(authorizeRequests -> authorizeRequests
+                        .requestMatchers("/emp/employee").hasRole("ADMIN")
+                        .requestMatchers("/emp/remove/**").hasRole("ADMIN")
+                )
+                .httpBasic(withDefaults())
+                .formLogin(withDefaults())
+                .csrf(AbstractHttpConfigurer::disable);
+        return http.build();
+
+
+         /*
+
+          http.authorizeRequests(authorizeRequests -> authorizeRequests.anyRequest()
                 .authenticated())
                 .httpBasic(withDefaults())
                 .formLogin(withDefaults())
                 .csrf(AbstractHttpConfigurer::disable);
         return http.build();
+       */
+
     }
 
 }
